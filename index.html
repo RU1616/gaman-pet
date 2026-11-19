@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!--
+    CSP（コンテンツセキュリティポリシー）：このページが読みこんでよいものを絞る設定。
+    もし悪意のあるコードが紛れこんでも、外部への通信や外部スクリプトの実行をブラウザが止めます。
+      default-src 'none'  … 下で許可したもの以外は、すべて禁止（外部への通信も不可）
+      script-src 'self'   … スクリプトは、このサイトに置いたファイルだけ
+      style-src           … CSSファイルと、タグの style="…" による色や幅の指定
+      img-src             … このサイトの画像と、タブのアイコン（data:）
+    外部のフォントやAPIを使うようになったら、ここに読みこみ先を足してください。
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>がまんペット｜がまんした分だけ、あの子が太る</title>
+  <meta name="description" content="がまんした食べ物を入力すると、そのカロリーの分だけ動物が太っていくダイエット応援アプリ。">
+  <meta name="theme-color" content="#FFF6EA">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐷</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🐽</span>
+      <h1 class="brand-name">がまんペット</h1>
+    </div>
+    <button class="icon-btn" type="button" data-action="open-help" aria-label="使い方・設定">？</button>
+  </header>
+
+  <main class="views">
+    <section class="view" id="view-home" aria-label="ホーム"></section>
+    <section class="view" id="view-log" aria-label="きろく" hidden></section>
+    <section class="view" id="view-animals" aria-label="どうぶつ" hidden></section>
+  </main>
+
+  <nav class="tabbar" aria-label="メニュー">
+    <button class="tab is-active" type="button" data-action="nav" data-to="home" aria-current="page">
+      <span class="tab-icon" aria-hidden="true">🏠</span><span class="tab-label">ホーム</span>
+    </button>
+    <button class="tab" type="button" data-action="nav" data-to="log">
+      <span class="tab-icon" aria-hidden="true">📒</span><span class="tab-label">きろく</span>
+    </button>
+    <button class="tab" type="button" data-action="nav" data-to="animals">
+      <span class="tab-icon" aria-hidden="true">🐾</span><span class="tab-label">どうぶつ</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ============ 入力シート（がまんしたものを記録） ============ -->
+<div class="sheet-backdrop" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-head">
+      <h2 id="sheet-title">なにをがまんした？</h2>
+      <button class="icon-btn" type="button" data-action="close-sheet" aria-label="とじる">✕</button>
+    </div>
+
+    <div class="seg" role="tablist" aria-label="入力の種類">
+      <button class="seg-btn is-active" type="button" role="tab" id="tab-food" aria-selected="true" aria-controls="form-food" data-action="sheet-tab" data-tab="food">🍰 たべもの</button>
+      <button class="seg-btn" type="button" role="tab" id="tab-drink" aria-selected="false" aria-controls="form-drink" data-action="sheet-tab" data-tab="drink">🥤 のみもの計算機</button>
+    </div>
+
+    <div class="sheet-body">
+
+      <!-- たべもの -->
+      <form class="form" id="form-food" role="tabpanel" aria-labelledby="tab-food" autocomplete="off" novalidate>
+        <div class="recent" id="food-recent" hidden></div>
+
+        <label class="field">
+          <span class="field-label">料理・スイーツの名前</span>
+          <input class="input" id="food-name" type="text" maxlength="40" enterkeyhint="done"
+                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                 placeholder="例：ショートケーキ、ラーメン">
+        </label>
+
+        <div class="picked" id="food-picked" hidden></div>
+
+        <div id="food-browser">
+          <div class="chips" id="food-cats" role="group" aria-label="ジャンル"></div>
+          <ul class="suggest" id="food-suggest" aria-label="候補"></ul>
+        </div>
+
+        <div class="row-2">
+          <label class="field">
+            <span class="field-label">カロリー <span class="field-hint" id="food-kcal-hint">（1つあたり）</span></span>
+            <span class="input-unit">
+              <input class="input" id="food-kcal" type="number" inputmode="numeric" min="1" max="9999" step="1" placeholder="0">
+              <span class="unit">kcal</span>
+            </span>
+          </label>
+          <div class="field">
+            <span class="field-label" id="food-qty-label">数量</span>
+            <div class="stepper" role="group" aria-labelledby="food-qty-label">
+              <button type="button" data-action="qty" data-step="-1" aria-label="へらす">−</button>
+              <output id="food-qty" aria-live="polite">1</output>
+              <button type="button" data-action="qty" data-step="1" aria-label="ふやす">＋</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="total">
+          <span class="total-label">がまんしたカロリー</span>
+          <span class="total-value"><strong id="food-total">0</strong><small>kcal</small></span>
+        </div>
+        <p class="preview" id="food-preview"></p>
+
+        <div class="form-foot">
+          <button class="btn-primary" id="food-submit" type="submit" disabled>あげる</button>
+        </div>
+      </form>
+
+      <!-- のみもの計算機 -->
+      <form class="form" id="form-drink" role="tabpanel" aria-labelledby="tab-drink" autocomplete="off" novalidate hidden>
+        <p class="form-lead">ラベルの「100mlあたり」のカロリーと、飲むはずだった量から計算するよ。</p>
+
+        <label class="field">
+          <span class="field-label">飲み物の名前 <span class="field-hint">（えらぶと自動で入るよ）</span></span>
+          <input class="input" id="drink-name" type="text" maxlength="40" enterkeyhint="done"
+                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                 placeholder="例：コーラ、ビール">
+        </label>
+
+        <div class="picked" id="drink-picked" hidden></div>
+        <ul class="suggest" id="drink-suggest" aria-label="候補"></ul>
+
+        <div class="calc">
+          <label class="field">
+            <span class="field-label">100mlあたり</span>
+            <span class="input-unit">
+              <input class="input" id="drink-per100" type="number" inputmode="decimal" min="0" max="900" step="0.1" placeholder="0">
+              <span class="unit">kcal</span>
+            </span>
+          </label>
+          <span class="calc-op" aria-hidden="true">×</span>
+          <label class="field">
+            <span class="field-label">飲む量</span>
+            <span class="input-unit">
+              <input class="input" id="drink-ml" type="number" inputmode="numeric" min="1" max="9999" step="1" placeholder="0">
+              <span class="unit">ml</span>
+            </span>
+          </label>
+        </div>
+        <div class="chips" id="drink-sizes" role="group" aria-label="よくある量"></div>
+
+        <div class="total">
+          <span class="total-label">がまんしたカロリー</span>
+          <span class="total-value"><strong id="drink-total">0</strong><small>kcal</small></span>
+        </div>
+        <p class="preview" id="drink-formula"></p>
+
+        <div class="form-foot">
+          <button class="btn-primary" id="drink-submit" type="submit" disabled>あげる</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- 使い方・名前変更・レベルアップなどの小窓 -->
+<dialog class="dialog" id="dialog"></dialog>
+
+<!-- お知らせ（「記録しました」など） -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- 食べ物が飛ぶ・紙ふぶきなどの演出用 -->
+<div class="fx" id="fx" aria-hidden="true"></div>
+
+<script src="js/data-animals.js"></script>
+<script src="js/data-foods.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/store.js"></script>
+<script src="js/art.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
